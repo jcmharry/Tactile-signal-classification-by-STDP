@@ -24,9 +24,9 @@ from brian2tools import *
 
 #prefs.codegen.target = 'cython'
 
-# specify the location of the MNIST data
-MNIST_data_path = ''
-print(os.path.abspath(MNIST_data_path))
+# specify the location of the data
+data_path = ''
+print(os.path.abspath(data_path))
 
 #------------------------------------------------------------------------------
 # functions
@@ -41,13 +41,11 @@ def get_labeled_data(picklename, bTrain = True):
     else:
         # Open the images with gzip in read binary mode
         if bTrain:
-            images = open(MNIST_data_path + 'train-images.idx3-ubyte','rb')
-            labels = open(MNIST_data_path + 'train-labels.idx1-ubyte','rb')
+            images = open(data_path + 'train-images.idx3-ubyte','rb')
+            labels = open(data_path + 'train-labels.idx1-ubyte','rb')
         else:
-            # images = open(MNIST_data_path + 'test-images.idx3-ubyte','rb')
-            # labels = open(MNIST_data_path + 'test-labels.idx1-ubyte','rb')
-            images = open(MNIST_data_path + 'test-images6.idx3-ubyte','rb')
-            labels = open(MNIST_data_path + 'test-labels6.idx1-ubyte','rb')
+            images = open(data_path + 'test-images6.idx3-ubyte','rb')
+            labels = open(data_path + 'test-labels6.idx1-ubyte','rb')
         # Get metadata for images
         images.read(4)  # skip the magic_number
         number_of_images = unpack('>I', images.read(4))[0]
