@@ -6,7 +6,7 @@ Created on 15.12.2014
 
 
 import numpy as np
-#np.set_printoptions(threshold=np.inf)
+np.set_printoptions(threshold=np.inf)
 import matplotlib.cm as cmap
 # import tkinter
 # import matplotlib
@@ -21,11 +21,8 @@ from struct import unpack
 from brian2 import *
 import brian2 as b2
 from brian2tools import *
-import torch.nn.functional as F
-import torch.nn as nn
-from torch import optim, nn
-import torch
 
+#prefs.codegen.target = 'cython'
 
 # specify the location of the MNIST data
 MNIST_data_path = ''
@@ -47,9 +44,10 @@ def get_labeled_data(picklename, bTrain = True):
             images = open(MNIST_data_path + 'train-images.idx3-ubyte','rb')
             labels = open(MNIST_data_path + 'train-labels.idx1-ubyte','rb')
         else:
-            images = open(MNIST_data_path + 'test-images.idx3-ubyte','rb')
-            labels = open(MNIST_data_path + 'test-labels.idx1-ubyte','rb')
-        
+            # images = open(MNIST_data_path + 'test-images.idx3-ubyte','rb')
+            # labels = open(MNIST_data_path + 'test-labels.idx1-ubyte','rb')
+            images = open(MNIST_data_path + 'test-images6.idx3-ubyte','rb')
+            labels = open(MNIST_data_path + 'test-labels6.idx1-ubyte','rb')
         # Get metadata for images
         images.read(4)  # skip the magic_number
         number_of_images = unpack('>I', images.read(4))[0]
@@ -219,7 +217,6 @@ def get_new_assignments(result_monitor, input_numbers):
 start = time.time()
 training = get_labeled_data(MNIST_data_path + 'training')
 print(len(training['x']))
-print(training['y'])
 end = time.time()
 print('time needed to load training set:', end - start)
 
@@ -239,7 +236,7 @@ np.random.seed(0)
 data_path = './'
 if test_mode:
     weight_path = data_path + 'weights/'
-    num_examples = 24
+    num_examples = 24 * 1
     use_testing_set = True
     do_plot_performance = False
     record_spikes = True
@@ -247,7 +244,7 @@ if test_mode:
     update_interval = num_examples
 else:
     weight_path = data_path + 'random/'
-    num_examples = 2696 * 15
+    num_examples = 2696 * 16
     use_testing_set = False
     do_plot_performance = True
     if num_examples <= 2696:
@@ -350,6 +347,14 @@ eqs_stdp_ee = '''
 eqs_stdp_pre_ee = 'pre = 1.; w = clip(w + nu_ee_pre * post1, 0, wmax_ee)'
 eqs_stdp_post_ee = 'post2before = post2; w = clip(w + nu_ee_post * pre * post2before, 0, wmax_ee); post1 = 1.; post2 = 1.'
 
+'''
+eqs_stdp_ee = '''
+                 dpre/dt = -pre/(tc_pre_ee)  : 1 (event-driven)
+                 dpost1/dt  = -post1/(tc_post_1_ee) : 1 (event-driven)'''
+eqs_stdp_pre_ee = 'pre = 1.; w = clip(w + nu_ee_pre * post1, 0, wmax_ee)'
+eqs_stdp_post_ee = 'w = clip(w + nu_ee_post * pre , 0, wmax_ee); post1 = 1.'
+'''
+
 b2.ion()
 fig_num = 1
 neuron_groups = {}
@@ -377,14 +382,16 @@ for subgroup_n, name in enumerate(population_names):
     neuron_groups[name+'i'].v = v_rest_i - 40. * b2.mV
     if test_mode or weight_path[-8:] == 'weights/':
         neuron_groups['e'].theta = np.load(weight_path + 'theta_' + name + ending + '.npy') * b2.volt
+        #neuron_groups['e'].theta = np.load(weight_path + 'theta_A2696.npy') * b2.volt
     else:
-        neuron_groups['e'].theta = np.ones((n_e)) * 20.0*b2.mV
-        # neuron_groups['e'].theta = np.load('weights/theta_A.npy') * b2.volt
+        neuron_groups['e'].theta = np.load(weight_path + 'theta_' + name + ending + '.npy') * b2.volt
+        #neuron_groups['e'].theta = np.ones((n_e)) * 20.0*b2.mV
 
     print('create recurrent connections')
     for conn_type in recurrent_conn_names:
         connName = name+conn_type[0]+name+conn_type[1]
         weightMatrix = get_matrix_from_file(weight_path + '../random/' + connName + ending + '.npy')
+        #print(weight_path + '../random/' + connName + ending + '.npy')
         model = 'w : 1'
         pre = 'g%s_post += w' % conn_type[0]
         post = ''
@@ -397,6 +404,7 @@ for subgroup_n, name in enumerate(population_names):
                                                     model=model, on_pre=pre, on_post=post)
         connections[connName].connect(True) # all-to-all connection
         connections[connName].w = weightMatrix[connections[connName].i, connections[connName].j]
+    #print(connections['AiAe'].w )
 
     print('create monitors for', name)
     rate_monitors[name+'e'] = b2.PopulationRateMonitor(neuron_groups[name+'e'])
@@ -421,7 +429,8 @@ for name in input_connection_names:
     for connType in input_conn_names:
         connName = name[0] + connType[0] + name[1] + connType[1]
         weightMatrix = get_matrix_from_file(weight_path + connName + ending + '.npy')
-        # weightMatrix = get_matrix_from_file('weights/XeAe.npy')
+        #weightMatrix = get_matrix_from_file(weight_path + 'XeAe13480.npy')
+        #print(weight_path + connName + ending + '.npy112')
         model = 'w : 1'
         pre = 'g%s_post += w' % connType[0]
         post = ''
@@ -440,23 +449,8 @@ for name in input_connection_names:
         connections[connName].connect(True) # all-to-all connection
         connections[connName].delay = 'minDelay + rand() * deltaDelay'
         connections[connName].w = weightMatrix[connections[connName].i, connections[connName].j]
-class Classifier(nn.Module):
-    def __init__(self):
-        super().__init__()
 
-        self.fc1 = nn.Linear(400, 8)
-        # self.fc2 = nn.Linear(400, 8)
 
-    def forward(self, x):
-        x = x.view(-1,20*20)
-        # x = F.relu(self.fc1(x))
-        return F.softmax(self.fc1(x),dim=1)
-#model = Classifier()
-model = torch.load('./output_model2')
-criterion = nn.CrossEntropyLoss()
-optimizer = optim.SGD(model.parameters(), lr=0.01)
-
-correct = 0
 #------------------------------------------------------------------------------
 # run the simulation and set inputs
 #------------------------------------------------------------------------------
@@ -494,6 +488,7 @@ while j < (int(num_examples)):
     input_groups['Xe'].rates = spike_rates * Hz
 #     print('run number:', j+1, 'of', int(num_examples))
     net.run(single_example_time, report='text')
+    print(neuron_groups['Ae'].v[20])
     #print(spike_rates)
     if j % update_interval == 0 and j > 0:
         assignments = get_new_assignments(result_monitor[:], input_numbers[j-update_interval : j])
@@ -503,38 +498,8 @@ while j < (int(num_examples)):
         save_connections(str(j))
         save_theta(str(j))
 
-    current_spike_count = np.asarray(spike_counters['Ae'].count[:]) - previous_spike_count   
+    current_spike_count = np.asarray(spike_counters['Ae'].count[:]) - previous_spike_count
     previous_spike_count = np.copy(spike_counters['Ae'].count[:])
-    
-    '''optimizer.zero_grad()
-    model.train(mode=True)
-    output = model(torch.tensor(current_spike_count).float().flatten())
-    input_numbers[j] = torch.tensor([(testing['y'][j%2696][0])],dtype=torch.long)
-    print(input_numbers[j],testing['y'][j%2696][0],7777777777777777777)
-    loss = criterion(output,input_numbers[j])
-    loss.backward()
-    optimizer.step()
-    print(output)
-    print(loss,1111111111111111111)
-    for name, weight in model.named_parameters():
-        print("weight:", weight,333333333333333333333333) # 打印权重，看是否在变化'''
-    print(testing['y'][j%2696][0],input_numbers[j], 2222222222222222222)
-    with torch.no_grad():  # 训练集中不需要反向传播
-        if np.sum(current_spike_count) >= 5:
-            model.eval()
-            images = torch.tensor(current_spike_count).float().flatten()
-            labels = testing['y'][j%2696][0]
-            
-            outputs = model(images)
-            _, predicted = torch.max(outputs.data, 1)
-            total = 2696
-            correct += (predicted == labels).sum().item()
-            print(outputs)
-            print(predicted,labels,333333333333, correct)
-            print('Accuracy of the network on the test images: %d %%' % (
-                    100 * correct / 24))
-
-        
     if np.sum(current_spike_count) < 5:
         input_intensity += 1
         for i,name in enumerate(input_population_names):
@@ -562,10 +527,8 @@ while j < (int(num_examples)):
         if (j+1)%1000==0:
             #plt.figure(j+10)
             plot_2d_input_weights()    
-            plt.savefig('E:\Codeproject\TactileSnn\Tactiletrain400\picture\Image'+str(j+1))
+            plt.savefig('E:\Codeproject\TactileSnn_new\Tactiletrain400\picture2\Image'+str(j+1))
             plt.clf()
-        if (j+1)%2696==0:
-            torch.save(model, './output_model'+ str(j/2696+1)) 
         net.run(resting_time)
         input_intensity = start_input_intensity
         j += 1
@@ -581,11 +544,68 @@ if not test_mode:
     save_theta()
 if not test_mode:
     save_connections()
-'''else:
-    np.save(data_path + 'activity/resultPopVecs' + str(2696), result_monitor)
-    np.save(data_path + 'activity/inputNumbers' + str(2696), input_numbers)'''
+    np.save(data_path + 'activity/resultPopVecs' + str(num_examples), result_monitor)
+    np.save(data_path + 'activity/inputNumbers' + str(num_examples), input_numbers)
+else:
+    np.save(data_path + 'activity/resultPopVecs' + str(num_examples) +'', result_monitor)
+    np.save(data_path + 'activity/inputNumbers' + str(num_examples) +'', input_numbers)
+    
 
 
+#------------------------------------------------------------------------------
+# plot results
+#------------------------------------------------------------------------------
+if rate_monitors:
+    b2.figure(fig_num)
+    fig_num += 1
+    for i, name in enumerate(rate_monitors):
+        b2.subplot(len(rate_monitors), 1, 1+i)
+        b2.plot(rate_monitors[name].t/b2.second, rate_monitors[name].rate, '.')
+        b2.title('Rates of population ' + name)
+        plt.savefig('E:\Codeproject\TactileSnn_new\Tactiletrain400\picture2\Image'+str(1))
+
+if spike_monitors:
+    b2.figure(fig_num)
+    
+    fig_num += 1
+    for i, name in enumerate(spike_monitors):
+        b2.subplot(len(spike_monitors), 1, 1+i)
+        b2.plot(spike_monitors[name].t/b2.ms, spike_monitors[name].i, '.')
+        b2.title('Spikes of population ' + name)
+        plt.savefig('E:\Codeproject\TactileSnn_new\Tactiletrain400\picture2\Image'+str(2))
+
+if spike_counters:
+    b2.figure(fig_num)
+    fig_num += 1
+    b2.plot(spike_monitors['Ae'].count[:])
+    b2.title('Spike count of population Ae')
+    plt.savefig('E:\Codeproject\TactileSnn_new\Tactiletrain400\picture2\Image'+str(3))
+
+
+
+
+
+plot_2d_input_weights()
+plt.savefig('E:\Codeproject\TactileSnn_new\Tactiletrain400\picture2\Image'+str(4))
+
+plt.figure(5)
+
+subplot(3,1,1)
+
+brian_plot(connections['XeAe'].w)
+subplot(3,1,2)
+
+brian_plot(connections['AeAi'].w)
+
+subplot(3,1,3)
+
+brian_plot(connections['AiAe'].w)
+plt.savefig('E:\Codeproject\TactileSnn_new\Tactiletrain400\picture2\Image'+str(5))
+
+
+
+b2.ioff()
+b2.show()
 
 
 
