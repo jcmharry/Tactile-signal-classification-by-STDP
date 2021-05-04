@@ -5,3 +5,4 @@
 # The code is revised according to the source code of paper "Unsupervised Learning of Digit recognition using STDP"
 
 
+ 
