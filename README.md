@@ -1,4 +1,4 @@
-Tactile-signal-classification-by-STDP
+# Tactile-signal-classification-by-STDP
 
 A reference code from paper "A Spiking Neural Network with Spike-timing-dependent Plasticity for Surface Roughness Analysis"
 
