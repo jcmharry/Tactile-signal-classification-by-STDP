@@ -210,16 +210,16 @@ def get_new_assignments(result_monitor, input_numbers):
 
 
 #------------------------------------------------------------------------------
-# load MNIST
+# load data
 #------------------------------------------------------------------------------
 start = time.time()
-training = get_labeled_data(MNIST_data_path + 'training')
+training = get_labeled_data(data_path + 'training')
 print(len(training['x']))
 end = time.time()
 print('time needed to load training set:', end - start)
 
 start = time.time()
-testing = get_labeled_data(MNIST_data_path + 'testing', bTrain = False)
+testing = get_labeled_data(data_path + 'testing', bTrain = False)
 print(len(testing['x']))
 end = time.time()
 print('time needed to load test set:', end - start)
