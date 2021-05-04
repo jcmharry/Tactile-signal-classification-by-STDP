@@ -79,7 +79,7 @@ def get_new_assignments(result_monitor, input_numbers):
                 assignments[i] = j 
     return assignments
 
-MNIST_data_path = './'
+data_path = './'
 data_path = './activity/'
 training_ending = '2696'
 testing_ending = '24'
@@ -92,9 +92,9 @@ n_e = 400
 n_input = 784
 ending = ''
 
-print('load MNIST')
-training = get_labeled_data(MNIST_data_path + 'training')
-testing = get_labeled_data(MNIST_data_path + 'testing', bTrain = False)
+print('load data')
+training = get_labeled_data(data_path + 'training')
+testing = get_labeled_data(data_path + 'testing', bTrain = False)
 
 print('load results')
 training_result_monitor = np.load(data_path + 'resultPopVecs' + training_ending + ending + '.npy')
